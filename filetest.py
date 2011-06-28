@@ -18,13 +18,17 @@ for root, dirs, files in os.walk(location):
         file_types.add(ext)
         # print extension
         path = string.replace(root, '/home/whosbein/web_dev/health/', '')
+        depth = 0
+        if path != '':
+            depth = path.count('/') + 1
         size = os.path.getsize(filename)
         if ext in urls:
             file_type = 'url'
         else:
             file_type = 'file'
 
-        print 'File name: %s | path: %s | size: %d | type: %s | ext: %s' % (name, path, size, file_type, ext)
+        print 'File name: %s | depth: %s | path: %s | size: %d | type: %s | ext: %s' \
+            % (name, depth, path, size, file_type, ext)
 
 
 #print file_types
