@@ -6,21 +6,20 @@ Methods to create and fill the database containing information about the files.
 import sys, os, string, sqlite3
 from argparse import ArgumentParser
 
-def gen_info(db_name, local_path, c, conn):
+def gen_files_table(db_name, local_path, c, conn):
     """
     Generates the information for the database.
     """
 
-    file_types = set()
+    file_types = set() # set of encountered file types
     urls = set(['.php', '.htm', '.html'])
 
     for root, dirs, files in os.walk(local_path):
         for name in files:
-            filename = os.path.join(root, name) # full filename
             # name is individual file name
+            filename = os.path.join(root, name) # full filename
             ext = os.path.splitext(filename)[1]
             file_types.add(ext)
-            # print extension
             path = string.replace(root, local_path, '')
             depth = 0
             if path != '':
@@ -31,21 +30,13 @@ def gen_info(db_name, local_path, c, conn):
             else:
                 file_type = 'file'
 
-            big_insert = ''
-            #sql = 'insert into file (name, depth, path, size, type, ext) ' \
-            big_insert += 'insert into file (name, depth, path, size, type, ext) ' \
+            sql = 'insert into file ' \
+                  '(name, depth, path, size, type, ext) ' \
                   'values (\'%s\', %i, \'%s\', %i, \'%s\', \'%s\');' \
                   % (name, depth, path, size, file_type, ext)
-            #c.execute(sql)
-            c.execute(big_insert)
-            #conn.commit()
-            #print big_insert
+            c.execute(sql)
+            item_id = c.lastrowid
 
-            #print 'File name: %s | depth: %s | path: %s | size: %d | ' \
-            #    'type: %s | ext: %s' \
-            #    % (name, depth, path, size, file_type, ext)
-
-    c.execute(big_insert)
     conn.commit()
 
 def check_for_database(db_name):
@@ -87,7 +78,7 @@ def main(argv=None):
 
     c, conn = check_for_database(args.name)
 
-    gen_info(args.name, args.path, c, conn)
+    gen_files_table(args.name, args.path, c, conn)
 
 if __name__ == "__main__":
     main()
