@@ -11,13 +11,15 @@ import re
 
 def gen_url(in_url, current_file):
     url = ''
+    #http = string.replace(current_file, '/media/500 GB Verbatim/ACC Backup/2011-07-05/', \
     http = string.replace(current_file, '/home/whosbein/web_dev/health/', \
                 'http://www.austincc.edu/health/')
     url = urljoin(http, in_url)
     return url
 
 def fix_implied_index(in_url):
-    if not re.search('\.[a-zA-Z]{3}$', in_url):
+    if not re.search('\.[a-zA-Z]{3}$', in_url) and \
+       not re.search('\.[a-zA-Z]{3}x$', in_url):
         if re.search('/$', in_url):
             return in_url + 'index.php'
         else:
