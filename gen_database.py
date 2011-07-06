@@ -34,7 +34,10 @@ def gen_files_table(db_name, local_path, c, conn):
                   '(name, depth, path, size, type, ext) ' \
                   'values (\'%s\', %i, \'%s\', %i, \'%s\', \'%s\');' \
                   % (name, depth, path, size, file_type, ext)
-            c.execute(sql)
+            try:
+                c.execute(sql)
+            except sqlite3.OperationalError:
+                print 'filename: %s sql: %s' % (filename, sql)
             item_id = c.lastrowid
 
     conn.commit()
