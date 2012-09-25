@@ -93,12 +93,7 @@ def gen_file_table(local_path, c, conn):
             else:
                 file_type = 'file'
 
-            #sql = 'insert or ignore into file ' \
-                  #'(name, depth, path, size, last_modified, type, ext) ' \
-                  #'values (\'%s\', %i, \'%s\', %i, \'%s\', \'%s\', \'%s\');' \
-                  #% (name, depth, path, size, last_mod, file_type, ext)
             try:
-                #c.execute(sql)
                 c.execute("insert into file" \
                         "(name, depth, path, size, last_modified, type, ext) "\
                         "values (?, ?, ?, ?, ?, ?, ?)",
@@ -139,10 +134,32 @@ def gen_file_dict(c, conn):
 
     return file_dict
 
-def check_for_database(db_name):
+def check_for_database(db_name, c, conn):
     """
     Checks for the database and its required tables and creates them if they
     don't exist.
+    """
+
+    sql = 'create table if not exists file (f_id INTEGER PRIMARY KEY, '\
+          'name TEXT, depth INT, path TEXT, live BOOLEAN DEFAULT 0, size INT, '\
+          'last_modified TEXT, type TEXT, ext TEXT)'
+    c.execute(sql)
+
+    sql = 'create table if not exists link (l_id INTEGER PRIMARY KEY, '\
+          's_id INTEGER, t_id INTEGER)'
+    c.execute(sql)
+
+    sql = 'create table if not exists broken (b_id INTEGER PRIMARY KEY, '\
+          's_id INTEGER, target TEXT)'
+    c.execute(sql)
+
+    conn.commit()
+
+
+def connect_to_database(db_name):
+    """
+    Checks for the database and creates it if it doesn't exist. Returns
+    connection variables.
     """
 
     if not os.path.exists(db_name):
@@ -153,18 +170,6 @@ def check_for_database(db_name):
     conn = sqlite3.connect(db_name)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
-
-    sql = 'create table if not exists file (f_id INTEGER PRIMARY KEY, '\
-          'name TEXT, depth INT, path TEXT, live BOOLEAN DEFAULT 0, size INT, '\
-          'last_modified TEXT, type TEXT, ext TEXT)'
-    c.execute(sql)
-    sql = 'create table if not exists link (l_id INTEGER PRIMARY KEY, '\
-          's_id INTEGER, t_id INTEGER)'
-    c.execute(sql)
-    sql = 'create table if not exists broken (b_id INTEGER PRIMARY KEY, '\
-          's_id INTEGER, target TEXT)'
-    c.execute(sql)
-    conn.commit()
 
     return c, conn
 
@@ -182,7 +187,9 @@ def main(argv=None):
     if os.path.splitext(args.name)[1] != '.sqlite':
         args.name = args.name + '.sqlite'
 
-    c, conn = check_for_database(args.name)
+    c, conn = connect_to_database(args.name)
+
+    check_for_database(args.name, c, conn)
 
     gen_file_table(args.path, c, conn)
 
