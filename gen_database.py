@@ -16,15 +16,15 @@ def gen_link_table(local_path, file_dict, c, conn):
     """
     Fills the link table in the database.
     """
-    bad_regs = [
-            re.compile(r'#'),
-            re.compile(r'^javascript'),
-            re.compile(r'^mailto')
-            ]
-    absolute = re.compile(r'^http://www')
-    good_regs = [
-            re.compile(r'^http://www.austincc.edu/health/ota/')
-            ]
+    #bad_regs = [
+            #re.compile(r'#'),
+            #re.compile(r'^javascript'),
+            #re.compile(r'^mailto')
+            #]
+    #absolute = re.compile(r'^http://www')
+    #good_regs = [
+            #re.compile(r'^http://www.austincc.edu/health/ota/')
+            #]
 
     for root, dirs, files in os.walk(local_path):
         files = [ file for file in files \
@@ -37,18 +37,61 @@ def gen_link_table(local_path, file_dict, c, conn):
             f.close()
             for link in soup.find_all('a'):
                 target = link.get('href')
-                try:
-                    if not any(regex.match(target) for regex in bad_regs):
-                        if not absolute.match(target):
-                            target = make_link_absolute(
-                                    filename, local_path, target)
-                        if any(regex.match(target) for regex in good_regs):
-                            #print file_dict[name]
-                            insert_link(file_dict, filename,
-                                    local_path, target, c, conn)
-                except TypeError:
-                    print 'TypeError in file: %s on target link: %s' \
-                            % (filename, target)
+                process_target(target, filename, local_path, file_dict, c, conn)
+                #try:
+                    #if not any(regex.match(target) for regex in bad_regs):
+                        #if not absolute.match(target):
+                            #target = make_link_absolute(
+                                    #filename, local_path, target)
+                        #if any(regex.match(target) for regex in good_regs):
+                            ##print file_dict[name]
+                            #insert_link(file_dict, filename,
+                                    #local_path, target, c, conn)
+                #except TypeError:
+                    #print 'TypeError in file: %s on target link: %s' \
+                            #% (filename, target)
+            for link in soup.find_all('form'):
+                target = link.get('action')
+                process_target(target, filename, local_path, file_dict, c, conn)
+                #try:
+                    #if not any(regex.match(target) for regex in bad_regs):
+                        #if not absolute.match(target):
+                            #target = make_link_absolute(
+                                    #filename, local_path, target)
+                        #if any(regex.match(target) for regex in good_regs):
+                            ##print file_dict[name]
+                            #insert_link(file_dict, filename,
+                                    #local_path, target, c, conn)
+                #except TypeError:
+                    #print 'TypeError in file: %s on target link: %s' \
+                            #% (filename, target)
+
+    # do custom db operations
+    index_menu_fix(c, conn)
+
+def process_target(target, filename, local_path, file_dict, c, conn):
+    bad_regs = [
+            re.compile(r'#'),
+            re.compile(r'^javascript'),
+            re.compile(r'^mailto')
+            ]
+    absolute = re.compile(r'^http://www')
+    good_regs = [
+            re.compile(r'^http://www.austincc.edu/health/ota/')
+            ]
+
+    try:
+        if not any(regex.match(target) for regex in bad_regs):
+            if not absolute.match(target):
+                target = make_link_absolute(
+                        filename, local_path, target)
+            if any(regex.match(target) for regex in good_regs):
+                #print file_dict[name]
+                insert_link(file_dict, filename,
+                        local_path, target, c, conn)
+    except TypeError:
+        print 'TypeError in file: %s on target link: %s' \
+                % (filename, target)
 
 def make_link_absolute(current_file, local_path, link):
     current_file = re.sub(local_path, '', current_file)
@@ -66,6 +109,30 @@ def insert_link(file_dict, filename, local_path, target, c, conn):
         c.execute("insert into broken(s_id, target) values(?, ?)",
                 (file_dict[name], target,))
         conn.commit()
+
+def index_menu_fix(c, conn):
+    """
+    Currently, the side menu is where most of the links are so using the index
+    pages as the "root" doesn't do much good because it really contains no
+    links.
+    This method will find all index and menu files that correspond to each other
+    and make a new entry in the link db that is index -> menu. This will allow
+    the index file to remain a viable "root" while not needing to do any other
+    fancy things.
+    """
+
+    sql = "select t1.f_id as index_id, t2.f_id as menu_id from file as t1 "\
+          "join file as t2 where t1.name = 'index.php' and "\
+          "t2.name = 'menu.php' and t1.depth = t2.depth and t1.path = t2.path;"
+    c.execute(sql)
+
+    results = c.fetchall()
+
+    for row in results:
+        c.execute("insert into link (s_id, t_id) values (?, ?)",
+                  (row['index_id'], row['menu_id'],))
+
+    conn.commit()
 
 def gen_file_table(local_path, c, conn):
     """
